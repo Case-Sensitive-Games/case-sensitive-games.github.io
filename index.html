@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Case-Sensitive Games</title>
+<style>
+  :root{
+    --ink:#0e0c12; --plate:#1d1826; --line:#4a4056;
+    --text:#e9e2cf; --muted:#9d9583; --gilt:#d9a648; --gilt2:#f0c46a;
+    --serif:Georgia,'Palatino Linotype','Times New Roman',serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    color:var(--text);padding:32px 16px;
+    background:radial-gradient(120% 90% at 50% -20%,#2a2337 0%,var(--ink) 55%,#0a0910 100%);
+  }
+  h1{
+    font-family:var(--serif);font-variant:small-caps;letter-spacing:.22em;font-weight:700;
+    font-size:clamp(24px,5vw,38px);margin:0;color:var(--gilt2);
+    text-shadow:0 0 18px rgba(217,166,72,.35);text-align:center;
+  }
+  .tag{font-family:var(--serif);font-style:italic;color:var(--muted);margin:8px 0 36px;text-align:center}
+  .games{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;max-width:720px}
+  a.game{
+    display:flex;flex-direction:column;gap:8px;width:260px;padding:20px 22px;
+    background:linear-gradient(170deg,var(--plate),#141019);
+    border:1px solid var(--line);border-radius:14px;color:var(--text);text-decoration:none;
+    box-shadow:0 14px 40px rgba(0,0,0,.5);
+    transition:transform .15s,border-color .2s;
+  }
+  a.game:hover{transform:translateY(-3px);border-color:var(--gilt)}
+  a.game:focus-visible{outline:2px solid var(--gilt);outline-offset:3px}
+  .gicon{font-size:30px;line-height:1}
+  .gname{font-family:var(--serif);font-variant:small-caps;letter-spacing:.08em;font-size:20px;color:var(--gilt2)}
+  .gdesc{font-size:13.5px;color:var(--muted);line-height:1.5}
+  footer{margin-top:44px;font-size:12px;color:#6b6455}
+  footer a{color:var(--muted);text-decoration:underline dotted;text-underline-offset:3px}
+  footer a:hover{color:var(--gilt2)}
+  footer a:focus-visible{outline:2px solid var(--gilt);outline-offset:2px;border-radius:3px}
+</style>
+</head>
+<body>
+  <h1>Case-Sensitive Games</h1>
+  <p class="tag">small games, sharp edges</p>
+  <div class="games">
+    <a class="game" href="./rogue-peaks/">
+      <span class="gicon">🃏⛰️</span>
+      <span class="gname">Rogue Peaks</span>
+      <span class="gdesc">A roguelike solitaire. Chain cards up a 12-floor spire — relics, bosses, and one deck between you and the summit.</span>
+    </a>
+  </div>
+  <footer>© Case-Sensitive Games · <a href="https://github.com/Case-Sensitive-Games">GitHub</a></footer>
+</body>
+</html>

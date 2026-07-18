@@ -1,0 +1,1308 @@
+<title>Rogue Peaks — Roguelike Solitaire</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<style>
+:root{
+  --ink:#0e0c12; --ink2:#171420; --plate:#1d1826; --plateline:#4a4056;
+  --felt:#20372c; --felt2:#142219;
+  --ivory:#f2e9d3; --ivory2:#e9dcbc; --paper-edge:#c9b98f;
+  --crimson:#c8434d; --blacksuit:#2b2733;
+  --gilt:#d9a648; --gilt2:#f0c46a; --ember:#e0703a;
+  --hexc:#a06fe0; --ice:#8fd3e8;
+  --text:#e9e2cf; --muted:#9d9583; --dim:#6b6455;
+  --serif:Georgia,'Iowan Old Style','Palatino Linotype','Times New Roman',serif;
+  --sans:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  font-family:var(--sans); color:var(--text); overflow:hidden;
+  background:radial-gradient(120% 90% at 50% -20%, #2a2337 0%, var(--ink) 55%, #0a0910 100%);
+}
+button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--gilt);outline-offset:2px;border-radius:4px}
+.hidden{display:none !important}
+
+/* ---------- frame ---------- */
+#app{height:100dvh;display:flex;flex-direction:column}
+header{
+  display:flex;align-items:center;gap:14px;padding:8px 16px;
+  background:linear-gradient(180deg,#1b1626,#151020);
+  border-bottom:1px solid #332c42; box-shadow:0 2px 12px rgba(0,0,0,.4);
+  flex-wrap:wrap;
+}
+.logo{
+  font-family:var(--serif);font-variant:small-caps;letter-spacing:.2em;
+  font-size:17px;color:var(--gilt2);text-shadow:0 0 14px rgba(217,166,72,.35);
+  white-space:nowrap;
+}
+.floorlbl{
+  font-family:var(--serif);font-variant:small-caps;letter-spacing:.12em;
+  font-size:14px;color:var(--text);opacity:.9;white-space:nowrap;
+}
+.floorlbl b{color:var(--gilt);font-weight:700}
+.spacer{flex:1}
+.hearts{font-size:16px;letter-spacing:2px;white-space:nowrap}
+.hearts .on{color:var(--crimson);text-shadow:0 0 8px rgba(200,67,77,.6)}
+.hearts .off{color:#453f52}
+.gold{
+  font-variant-numeric:tabular-nums;font-weight:700;color:var(--gilt2);
+  font-size:15px;white-space:nowrap;transition:transform .15s;
+}
+.gold.bump{transform:scale(1.25)}
+.iconbtn{
+  width:30px;height:30px;border-radius:8px;border:1px solid #3a3348;
+  background:#221c30;font-size:14px;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center;
+}
+.iconbtn:hover{border-color:var(--gilt);color:var(--gilt2)}
+
+#relicbar{
+  display:flex;gap:6px;padding:5px 14px;min-height:34px;align-items:center;flex-wrap:wrap;
+  background:rgba(20,16,28,.5);
+}
+.relic{
+  display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;
+  border:1px solid #423a52;background:#221c30;font-size:12px;color:var(--text);
+}
+.relic:hover{border-color:var(--gilt)}
+.relic .rname{font-family:var(--serif);font-variant:small-caps;letter-spacing:.05em}
+#relicbar .bosschip{
+  border-color:#6e3540;background:#33161c;color:#f0b9be;font-size:12px;
+  padding:3px 10px;border-radius:999px;
+}
+
+/* ---------- table ---------- */
+#boardArea{
+  flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;
+  background:
+    radial-gradient(90% 120% at 50% 0%, rgba(255,231,170,.07), transparent 55%),
+    radial-gradient(140% 140% at 50% 60%, var(--felt) 0%, var(--felt2) 78%, #0d1710 100%);
+  box-shadow:inset 0 0 90px rgba(0,0,0,.55);
+}
+#boardHolder{position:relative}
+#board{position:absolute;left:0;top:0;transform-origin:0 0}
+
+/* ---------- cards ---------- */
+.card{
+  position:absolute;width:94px;height:132px;border-radius:10px;
+  box-shadow:0 3px 9px rgba(0,0,0,.5);
+  perspective:600px;transition:transform .18s, box-shadow .3s;
+  padding:0;text-align:left;
+}
+.card .inner{
+  position:absolute;inset:0;transform-style:preserve-3d;
+  transition:transform .45s cubic-bezier(.25,.7,.3,1.05);
+}
+.card:not(.faceup) .inner{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;border-radius:10px;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.face.back{
+  transform:rotateY(180deg);
+  background-image:
+    repeating-linear-gradient(45deg,rgba(217,166,72,.13) 0 2px,transparent 2px 9px),
+    repeating-linear-gradient(-45deg,rgba(217,166,72,.13) 0 2px,transparent 2px 9px),
+    linear-gradient(135deg,#5a2130,#40141f 70%,#35101a);
+  box-shadow:inset 0 0 0 3px #2e0d16, inset 0 0 0 4px rgba(217,166,72,.4);
+}
+.face.front{
+  background:linear-gradient(160deg,#f7efdb,#ecdfc0);
+  box-shadow:inset 0 0 0 1px rgba(90,60,20,.25), inset 0 -3px 8px rgba(120,90,40,.12);
+  color:var(--blacksuit);font-family:var(--serif);
+}
+.face.front.red{color:var(--crimson)}
+.corner{position:absolute;top:5px;left:7px;font-size:19px;font-weight:700;line-height:.95;display:flex;flex-direction:column;align-items:center}
+.corner span{font-size:14px}
+.corner.flip{top:auto;left:auto;right:7px;bottom:5px;transform:rotate(180deg)}
+.pip{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:42px;opacity:.85}
+.front.joker{color:#7b4fb0}
+.front.joker .pip{font-size:44px}
+.jlabel{position:absolute;bottom:6px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:.25em;font-weight:700}
+
+.card.covered .front{filter:brightness(.6) saturate(.75)}
+.card.gone{visibility:hidden}
+.card.playable{cursor:pointer;box-shadow:0 0 0 2px var(--gilt),0 0 16px rgba(217,166,72,.4),0 6px 12px rgba(0,0,0,.5)}
+.card.playable:hover{transform:translateY(-5px)}
+.card.playable.frosty{box-shadow:0 0 0 2px var(--ice),0 0 16px rgba(143,211,232,.45),0 6px 12px rgba(0,0,0,.5)}
+.card.playable.hexed{box-shadow:0 0 0 2px var(--hexc),0 0 16px rgba(160,111,224,.5),0 6px 12px rgba(0,0,0,.5)}
+@media (prefers-reduced-motion:no-preference){
+  .card.playable{animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{50%{box-shadow:0 0 0 2px var(--gilt2),0 0 26px rgba(240,196,106,.6),0 6px 12px rgba(0,0,0,.5)}}
+  .card.playable.frosty{animation:none}
+  .card.playable.hexed{animation:none}
+}
+.card.gilded .front{box-shadow:inset 0 0 0 3px var(--gilt), inset 0 0 12px rgba(217,166,72,.28)}
+.card.gilded .front::before{content:'◆';position:absolute;top:5px;right:7px;font-size:12px;color:var(--gilt);text-shadow:0 0 6px rgba(217,166,72,.8)}
+.card.hexed .front{box-shadow:inset 0 0 0 3px var(--hexc), inset 0 0 14px rgba(160,111,224,.3)}
+.card.hexed .front::before{content:'✦';position:absolute;top:5px;right:7px;font-size:12px;color:var(--hexc);text-shadow:0 0 6px rgba(160,111,224,.9)}
+.card.frozen:not(.thawed) .front::after{
+  content:'❄';position:absolute;inset:0;border-radius:10px;
+  background:linear-gradient(150deg,rgba(170,225,244,.55),rgba(110,170,215,.3));
+  display:flex;align-items:center;justify-content:center;
+  font-size:30px;color:#eefbff;text-shadow:0 1px 6px #256a82;
+}
+.card.flying{transition:transform .38s cubic-bezier(.5,.05,.65,1),opacity .38s;pointer-events:none}
+.card.smashed{transition:transform .3s ease-in,opacity .3s;transform:scale(.1) rotate(70deg);opacity:0}
+.card.shake{animation:shake .3s}
+@keyframes shake{25%{margin-left:-5px}75%{margin-left:5px}}
+.card.cansmash{cursor:crosshair;box-shadow:0 0 0 2px var(--ember),0 0 14px rgba(224,112,58,.55)}
+
+.float{
+  position:absolute;z-index:400;pointer-events:none;font-family:var(--serif);
+  font-weight:700;font-size:21px;color:var(--gilt2);
+  text-shadow:0 1px 2px #000,0 0 12px rgba(217,166,72,.6);
+  animation:floatUp .95s ease-out forwards;white-space:nowrap;
+}
+.float.gold{color:#ffd77a}
+.float.hex{color:var(--hexc);text-shadow:0 1px 2px #000,0 0 12px rgba(160,111,224,.7)}
+.float.icy{color:var(--ice);font-size:16px}
+.float.hot{font-size:27px;color:#ffcf8a}
+@keyframes floatUp{0%{opacity:0;transform:translateY(8px) scale(.7)}15%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-52px) scale(1.06)}}
+
+/* ---------- console (footer) ---------- */
+footer{
+  display:flex;align-items:center;gap:16px;padding:10px 16px;flex-wrap:wrap;
+  background:linear-gradient(180deg,#1b1626,#120e1b);
+  border-top:1px solid #332c42;box-shadow:0 -4px 16px rgba(0,0,0,.4);
+}
+.pilegrp{display:flex;gap:12px;align-items:flex-start}
+.pile{display:flex;flex-direction:column;align-items:center;gap:3px}
+.minicard{
+  width:60px;height:84px;border-radius:7px;position:relative;
+  background:linear-gradient(160deg,#f7efdb,#ecdfc0);
+  box-shadow:0 2px 6px rgba(0,0,0,.5), inset 0 0 0 1px rgba(90,60,20,.25);
+  font-family:var(--serif);color:var(--blacksuit);
+}
+.minicard.back{
+  background-image:
+    repeating-linear-gradient(45deg,rgba(217,166,72,.13) 0 2px,transparent 2px 8px),
+    repeating-linear-gradient(-45deg,rgba(217,166,72,.13) 0 2px,transparent 2px 8px),
+    linear-gradient(135deg,#5a2130,#40141f);
+  box-shadow:0 2px 6px rgba(0,0,0,.5), inset 0 0 0 2px #2e0d16, inset 0 0 0 3px rgba(217,166,72,.4);
+}
+.minicard.red{color:var(--crimson)}
+.minicard.jok{color:#7b4fb0}
+.minicard .mr{position:absolute;top:4px;left:6px;font-size:15px;font-weight:700}
+.minicard .mp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px;opacity:.85}
+.minicard.pop{animation:wastepop .25s}
+@keyframes wastepop{0%{transform:scale(1.18)}100%{transform:scale(1)}}
+.pile .ct{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+#stockBtn{border-radius:8px}
+#stockBtn:hover .minicard.back{box-shadow:0 2px 6px rgba(0,0,0,.5), inset 0 0 0 2px #2e0d16, inset 0 0 0 3px var(--gilt)}
+#stockBtn.empty{opacity:.35;cursor:default}
+
+.chain{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-width:64px;height:64px;border-radius:50%;
+  border:2px solid #3a3348;background:#1d1729;
+  transition:background .4s,border-color .4s,box-shadow .4s;
+}
+.chain #chainMult{font-family:var(--serif);font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
+.chain .clbl{font-size:9px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase}
+.chain.warm{border-color:var(--ember);background:#2b1a1a;box-shadow:0 0 14px rgba(224,112,58,.35)}
+.chain.warm #chainMult{color:#f0a06a}
+.chain.hot{border-color:#e8552f;background:#361a12;box-shadow:0 0 22px rgba(232,85,47,.5)}
+.chain.hot #chainMult{color:#ff9f5f}
+.chain.inferno{border-color:var(--gilt2);background:#3d2a10;box-shadow:0 0 30px rgba(240,196,106,.65)}
+.chain.inferno #chainMult{color:#ffe2a3}
+.chain.snap{animation:shake .35s}
+
+.meterwrap{flex:1;min-width:170px;max-width:420px;display:flex;flex-direction:column;gap:5px}
+.meter{height:14px;border-radius:99px;background:#12101c;box-shadow:inset 0 2px 5px rgba(0,0,0,.7);overflow:hidden}
+.meter .fill{
+  height:100%;width:0%;border-radius:99px;
+  background:linear-gradient(90deg,#8d7f5c,#c9b370);
+  transition:width .35s ease-out,background .4s;
+}
+.meter.done .fill{background:linear-gradient(90deg,var(--gilt),var(--gilt2));box-shadow:0 0 12px rgba(240,196,106,.7)}
+.mtext{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;justify-content:space-between;gap:8px}
+.mtext .done{color:var(--gilt2)}
+
+.items{display:flex;gap:8px}
+.itemslot{
+  width:44px;height:44px;border-radius:10px;border:1px dashed #3a3348;
+  display:flex;align-items:center;justify-content:center;font-size:21px;
+  background:#1a1526;
+}
+.itemslot.full{border-style:solid;border-color:#514868;cursor:pointer}
+.itemslot.full:hover{border-color:var(--gilt);transform:translateY(-2px)}
+.itemslot.armed{border-color:var(--ember);box-shadow:0 0 10px rgba(224,112,58,.5)}
+
+/* ---------- buttons ---------- */
+.btn{
+  font-family:var(--serif);font-variant:small-caps;letter-spacing:.08em;font-size:16px;
+  padding:9px 20px;border-radius:10px;border:1px solid #574c6e;background:#241d33;color:var(--text);
+  transition:transform .12s,border-color .2s,background .2s;
+}
+.btn:hover{border-color:var(--gilt);transform:translateY(-1px)}
+.btn.gold{background:linear-gradient(170deg,var(--gilt2),var(--gilt));color:#241a06;border-color:#8a6a24;font-weight:700}
+.btn.gold:hover{background:linear-gradient(170deg,#ffd88a,var(--gilt))}
+.btn.small{font-size:14px;padding:6px 14px}
+.btn:disabled{opacity:.4;cursor:default;transform:none}
+.btn:disabled:hover{border-color:#574c6e}
+
+/* ---------- banner / hint ---------- */
+.banner{
+  position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:60;
+  display:flex;align-items:center;gap:14px;padding:10px 16px;border-radius:12px;
+  background:rgba(23,18,32,.95);border:1px solid var(--plateline);
+  box-shadow:0 10px 30px rgba(0,0,0,.6);font-size:14px;white-space:nowrap;
+}
+.hint{
+  position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:60;
+  padding:8px 16px;border-radius:10px;background:rgba(54,26,18,.95);
+  border:1px solid var(--ember);font-size:13px;
+}
+
+/* ---------- overlay screens ---------- */
+.overlay{
+  position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+  background:rgba(8,6,12,.72);backdrop-filter:blur(3px);padding:14px;
+}
+.plate{
+  background:linear-gradient(170deg,var(--plate),#141019);
+  border:1px solid var(--plateline);border-radius:16px;
+  box-shadow:0 30px 90px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.05);
+  padding:26px 30px;width:min(94vw,660px);max-height:90dvh;overflow:auto;
+}
+.plate h1{
+  font-family:var(--serif);font-variant:small-caps;letter-spacing:.14em;font-weight:700;
+  font-size:clamp(26px,5vw,40px);margin:0 0 4px;color:var(--ivory);text-align:center;text-wrap:balance;
+}
+.plate h1.gilt{color:var(--gilt2);text-shadow:0 0 22px rgba(217,166,72,.4)}
+.plate h2{
+  font-family:var(--serif);font-variant:small-caps;letter-spacing:.1em;font-size:19px;
+  margin:18px 0 8px;color:var(--gilt2);
+}
+.plate .sub{text-align:center;color:var(--muted);font-size:14px;margin:0 0 14px}
+.rule{height:1px;margin:16px 0;background:linear-gradient(90deg,transparent,#57492f 20%,#57492f 80%,transparent)}
+.center{text-align:center}
+.plate .bigbtnrow{display:flex;gap:12px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+.kv{display:flex;justify-content:space-between;gap:16px;font-size:14px;padding:4px 0;color:var(--text)}
+.kv span:first-child{color:var(--muted)}
+.kv span:last-child{font-variant-numeric:tabular-nums;font-weight:600}
+.bossplate{
+  margin:14px auto 0;padding:12px 18px;border-radius:12px;max-width:420px;
+  background:#2b141a;border:1px solid #6e3540;text-align:center;
+}
+.bossplate .bname{font-family:var(--serif);font-variant:small-caps;letter-spacing:.12em;font-size:18px;color:#f0949e}
+.bossplate .bdesc{font-size:13px;color:#d8a9ae;margin-top:3px}
+.targetline{
+  text-align:center;font-family:var(--serif);font-size:19px;color:var(--text);margin-top:14px;
+}
+.targetline b{color:var(--gilt2);font-variant-numeric:tabular-nums}
+.seedline{text-align:center;font-size:12px;color:var(--dim);margin-top:14px}
+.seedline button{color:var(--muted);text-decoration:underline dotted;font-size:12px}
+.seedline button:hover{color:var(--gilt2)}
+
+.rules{font-size:14px;line-height:1.55;color:var(--text)}
+.rules p{margin:7px 0}
+.rules .k{color:var(--gilt2);font-weight:600}
+.legend{display:flex;flex-direction:column;gap:6px;font-size:13.5px;line-height:1.4}
+.legend .li{display:flex;gap:10px;align-items:baseline}
+.legend .sw{flex:0 0 auto;width:74px;font-weight:700;font-family:var(--serif)}
+.sw.g{color:var(--gilt)} .sw.f{color:var(--ice)} .sw.h{color:var(--hexc)} .sw.j{color:#b490e4}
+
+/* shop */
+.shophead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.shopgold{font-variant-numeric:tabular-nums;font-weight:700;color:var(--gilt2);font-size:18px}
+.reward{font-size:14px;color:var(--muted);text-align:center;margin:6px 0 2px}
+.reward b{color:var(--gilt2)}
+.shopgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px}
+.shopcard{
+  border:1px solid #3f3750;border-radius:12px;padding:12px;background:#1c1729;
+  display:flex;flex-direction:column;gap:6px;min-height:150px;
+}
+.shopcard.sold{opacity:.35}
+.shopcard .icon{font-size:26px;line-height:1}
+.shopcard .name{font-family:var(--serif);font-variant:small-caps;letter-spacing:.05em;font-size:15.5px;color:var(--ivory)}
+.shopcard .rar{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.shopcard .rar.u{color:#8fb6d9}.shopcard .rar.r{color:#d9a0e0}
+.shopcard .desc{font-size:12.5px;color:var(--muted);flex:1;line-height:1.4}
+.shopcard .btn{align-self:stretch;text-align:center}
+.shoprow{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+
+/* title */
+.titleart{text-align:center;font-size:34px;letter-spacing:14px;margin:6px 0 2px;text-shadow:0 0 20px rgba(217,166,72,.35)}
+.tagline{
+  text-align:center;font-family:var(--serif);font-style:italic;color:var(--muted);
+  font-size:15px;margin-bottom:16px;
+}
+.seedrow{display:flex;gap:8px;justify-content:center;align-items:center;margin-top:16px;flex-wrap:wrap}
+.seedrow input{
+  background:#120e1b;border:1px solid #3a3348;border-radius:8px;color:var(--text);
+  padding:8px 12px;font-size:14px;width:200px;
+}
+.best{text-align:center;font-size:13px;color:var(--gilt);margin-top:12px}
+
+/* toasts */
+#toasts{position:fixed;right:14px;bottom:96px;z-index:300;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none}
+.toast{
+  background:rgba(32,26,46,.96);border:1px solid var(--plateline);border-radius:10px;
+  padding:8px 14px;font-size:13px;max-width:300px;box-shadow:0 8px 24px rgba(0,0,0,.5);
+  animation:toastin .25s ease-out;
+}
+@keyframes toastin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.toast.fade{opacity:0;transition:opacity .5s}
+
+@media (max-width:640px){
+  header{gap:8px;padding:6px 10px}
+  .logo{font-size:14px;letter-spacing:.12em}
+  .floorlbl{font-size:12px}
+  footer{gap:10px;padding:8px 10px}
+  .minicard{width:48px;height:68px}
+  .minicard .mp{font-size:20px}.minicard .mr{font-size:12px}
+  .chain{min-width:52px;height:52px}
+  .chain #chainMult{font-size:16px}
+  .relic .rname{display:none}
+  .banner{white-space:normal}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+</style>
+
+<div id="app">
+  <header>
+    <div class="logo">⛰ Rogue Peaks</div>
+    <div id="floorLbl" class="floorlbl"></div>
+    <div class="spacer"></div>
+    <div id="hearts" class="hearts" title="Hearts"></div>
+    <div id="goldLbl" class="gold" title="Gold">0 ⛃</div>
+    <button id="muteBtn" class="iconbtn" title="Toggle sound">♪</button>
+    <button class="iconbtn" data-a="help" title="How to play">?</button>
+  </header>
+  <div id="relicbar"></div>
+  <div id="boardArea">
+    <div id="boardHolder"><div id="board"></div></div>
+    <div id="hint" class="hint hidden"></div>
+    <div id="banner" class="banner hidden">
+      <span id="bannerMsg">No moves remain.</span>
+      <button id="bannerBtn" class="btn small gold" data-a="endfloor">End Floor</button>
+    </div>
+  </div>
+  <footer>
+    <div class="pilegrp">
+      <button id="stockBtn" class="pile" title="Draw a card (Space)">
+        <div class="minicard back"></div>
+        <span id="stockCt" class="ct">–</span>
+      </button>
+      <div class="pile">
+        <div id="waste" class="minicard"></div>
+        <span class="ct">waste</span>
+      </div>
+    </div>
+    <div id="chain" class="chain"><span id="chainMult">×1</span><span class="clbl">chain</span></div>
+    <div class="meterwrap">
+      <div class="meter" id="meter"><div id="meterFill" class="fill"></div></div>
+      <div class="mtext"><span id="meterTxt">0 / 0</span><span id="meterDone"></span></div>
+    </div>
+    <button id="finishBtn" class="btn small gold hidden" data-a="endfloor">Bank it ✦</button>
+    <div id="items" class="items"></div>
+  </footer>
+</div>
+<div id="overlay" class="overlay hidden"><div id="plate" class="plate"></div></div>
+<div id="toasts"></div>
+
+<script>
+/*CORE-START*/
+'use strict';
+// ============ seeded RNG ============
+function xmur3(str){let h=1779033703^str.length;for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=(h<<13)|(h>>>19);}return function(){h=Math.imul(h^(h>>>16),2246822507);h=Math.imul(h^(h>>>13),3266489909);return (h^=h>>>16)>>>0;};}
+function mulberry32(a){return function(){a|=0;a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
+const rnd=run=>run.rng();
+const ri=(run,n)=>Math.floor(run.rng()*n);
+function shuffle(run,a){for(let i=a.length-1;i>0;i--){const j=ri(run,i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+// ============ data ============
+function row(r,xs){return xs.map(x=>[r,x]);}
+function span(a,b,step){const o=[];for(let x=a;x<=b;x+=step)o.push(x);return o;}
+const LAYOUTS=[
+  {name:'Twin Summits',min:1,max:1,spots:[...row(0,[3,13]),...row(1,[2,4,12,14]),...row(2,[1,3,5,11,13,15]),...row(3,span(0,18,2))]},
+  {name:'Three Peaks',min:2,spots:[...row(0,[3,9,15]),...row(1,[2,4,8,10,14,16]),...row(2,span(1,17,2)),...row(3,span(0,18,2))]},
+  {name:'The Great Pyramid',min:2,spots:(()=>{const s=[];for(let r=0;r<7;r++)for(let i=0;i<=r;i++)s.push([r,9-r+2*i]);return s;})()},
+  {name:'The Wall',min:3,spots:[...row(0,span(1,17,2)),...row(1,span(0,18,2)),...row(2,span(1,17,2))]},
+  {name:'The Crown',min:5,spots:[...row(0,[1,5,9,13,17]),...row(1,span(2,16,2)),...row(2,span(1,17,2)),...row(3,span(2,16,2))]},
+  {name:'The Cathedral',min:7,spots:[...row(0,[3,9,15]),...row(1,[2,4,8,10,14,16]),...row(2,span(1,17,2)),...row(3,span(0,18,2)),...row(4,[3,7,11,15])]},
+];
+const RELICS=[
+  {id:'ouro',name:'Ouroboros',icon:'🐍',rar:1,cost:9,desc:'Aces and Kings link — the ranks wrap around.'},
+  {id:'gemini',name:'Gemini Charm',icon:'♊',rar:1,cost:9,desc:'Cards of equal rank link.'},
+  {id:'pockets',name:'Deep Pockets',icon:'🎒',rar:0,cost:6,desc:'+4 cards in the stock every floor.'},
+  {id:'net',name:'Safety Net',icon:'🕸️',rar:0,cost:6,desc:'The first stock draw each floor keeps your chain alive.'},
+  {id:'digger',name:'Grave Digger',icon:'⚰️',rar:0,cost:5,desc:'+6 score whenever you draw from the stock.'},
+  {id:'lamp',name:"Miner's Lamp",icon:'🏮',rar:0,cost:6,desc:'Gilded cards appear twice as often and pay 6 gold.'},
+  {id:'momentum',name:'Momentum',icon:'🌀',rar:2,cost:13,desc:'Your chain multiplier climbs twice as fast.'},
+  {id:'royal',name:'Royal Decree',icon:'👑',rar:1,cost:9,desc:'Jacks, Queens and Kings score double.'},
+  {id:'seven',name:'Lucky Seven',icon:'☘️',rar:0,cost:6,desc:'Sevens score +77.'},
+  {id:'orb',name:'Scrying Orb',icon:'🔮',rar:1,cost:9,desc:'Every card on the board is dealt face-up.'},
+  {id:'jester',name:'Court Jester',icon:'🃏',rar:2,cost:13,desc:'Two Jokers hide in the stock each floor. A Joker matches anything.'},
+  {id:'phoenix',name:'Phoenix Feather',icon:'🪶',rar:2,cost:12,desc:'The first time you would die, survive at 1 heart. Consumed.'},
+  {id:'tent',name:"Traveler's Tent",icon:'⛺',rar:1,cost:8,desc:'Heal 1 heart after clearing every boss floor.'},
+  {id:'idol',name:'Golden Idol',icon:'🗿',rar:1,cost:8,desc:'+4 gold every time you clear a floor.'},
+];
+const ITEMS=[
+  {id:'hammer',name:'Hammer',icon:'🔨',cost:4,desc:'Smash any open card off the board. No score, but your chain survives.'},
+  {id:'gale',name:'Gale',icon:'🌪️',cost:4,desc:'The winds reshuffle the faces of every card left on the board.'},
+  {id:'eye',name:'Third Eye',icon:'👁️',cost:3,desc:'Reveal every face-down card on this floor.'},
+  {id:'flask',name:'Bottomless Flask',icon:'⚗️',cost:5,desc:'Conjure 3 extra cards onto the stock.'},
+];
+const BOSSES=[
+  {id:'miser',name:'The Miser',desc:'The stock is thinned by a third.'},
+  {id:'glutton',name:'The Glutton',desc:'The target is 25% higher.'},
+  {id:'rust',name:'The Rusted King',desc:'Your chain multiplier is capped at ×4.'},
+  {id:'frost',name:'The Frost',desc:'Six extra cards are frozen solid.'},
+  {id:'tax',name:'The Taxman',desc:'Every stock draw costs 1 gold.'},
+];
+const VICTORY_FLOOR=12;
+
+// ============ run / floor ============
+function newRun(seedStr){
+  const s=(seedStr&&String(seedStr).trim())||String(Math.floor(Math.random()*1e9));
+  return {
+    seedStr:s, rng:mulberry32(xmur3(s)()),
+    hp:3, maxHp:5, gold:6, floor:1,
+    relics:[], items:[], itemCap:3, bossFor:{}, phase:'floor', fl:null, shop:null,
+    stats:{played:0,bestChain:0,gold:0,floors:0,retries:0,fullClears:0},
+  };
+}
+const has=(run,id)=>run.relics.includes(id);
+
+function startFloor(run){
+  const floor=run.floor;
+  const eligible=LAYOUTS.filter(L=>floor>=L.min&&floor<=(L.max||999));
+  const layout=eligible[ri(run,eligible.length)];
+  let boss=null;
+  if(floor%3===0) boss=run.bossFor[floor]||(run.bossFor[floor]=BOSSES[ri(run,BOSSES.length)].id);
+  let t=270*Math.pow(1.25,floor-1);
+  if(boss)t*=1.3;
+  if(boss==='glutton')t*=1.25;
+  const target=Math.round(t/10)*10;
+
+  const deck=[];
+  for(let s=0;s<4;s++)for(let r=1;r<=13;r++)deck.push({rank:r,suit:s});
+  shuffle(run,deck);
+  const cards=layout.spots.map((sp,i)=>({
+    id:i, r:sp[0], x:sp[1], rank:deck[i].rank, suit:deck[i].suit,
+    special:null, thawed:false, faceUp:false, removed:false, coverers:[],
+  }));
+  for(const c of cards)c.coverers=cards.filter(o=>o.r===c.r+1&&Math.abs(o.x-c.x)<=1).map(o=>o.id);
+
+  const lamp=has(run,'lamp');
+  for(const c of cards){
+    const pg=lamp?0.13:0.065;
+    const pf=floor>=4?Math.min(0.12,0.05+floor*0.004):0;
+    const ph=floor>=5?0.05:0;
+    const roll=rnd(run);
+    if(roll<pg)c.special='gilded';
+    else if(roll<pg+pf)c.special='frozen';
+    else if(roll<pg+pf+ph)c.special='hexed';
+  }
+  if(boss==='frost'){
+    const plain=shuffle(run,cards.filter(c=>!c.special));
+    for(const c of plain.slice(0,6))c.special='frozen';
+  }
+
+  let base=floor<=3?19:floor<=6?17:floor<=9?15:14;
+  if(has(run,'pockets'))base+=4;
+  if(boss==='miser')base=Math.round(base*0.7);
+  const n=Math.max(6,Math.min(52-cards.length-1,base));
+  const rest=deck.slice(cards.length);
+  const waste=[{rank:rest[0].rank,suit:rest[0].suit}];
+  const stock=rest.slice(1,1+n).map(c=>({rank:c.rank,suit:c.suit}));
+  if(has(run,'jester'))for(let k=0;k<2;k++)stock.splice(ri(run,stock.length+1),0,{rank:0,suit:4,joker:true});
+
+  const orb=has(run,'orb');
+  for(const c of cards)if(orb||c.coverers.length===0)c.faceUp=true;
+
+  run.fl={
+    layoutName:layout.name, cards, stock, waste,
+    score:0, target, chain:0, boss, safetyUsed:false, over:false, drew:0,
+    stockStart:stock.length,
+  };
+  run.phase='floor';
+}
+
+// ============ queries ============
+function isExposed(fl,c){return !c.removed&&c.coverers.every(id=>fl.cards[id].removed);}
+function wasteTop(fl){return fl.waste[fl.waste.length-1];}
+function matches(run,rank){
+  const t=wasteTop(run.fl);
+  if(t.joker)return true;
+  const d=Math.abs(rank-t.rank);
+  return d===1||(d===12&&has(run,'ouro'))||(d===0&&has(run,'gemini'));
+}
+function canPlay(run,c){
+  return !c.removed&&c.faceUp&&isExposed(run.fl,c)&&(c.special==='hexed'||matches(run,c.rank));
+}
+function hasMoves(run){
+  const fl=run.fl;
+  if(!fl||fl.over)return false;
+  if(fl.stock.length>0)return true;
+  return fl.cards.some(c=>canPlay(run,c));
+}
+
+// ============ actions ============
+function doReveals(run,evs){
+  const fl=run.fl;
+  for(const c of fl.cards){
+    if(!c.removed&&!c.faceUp&&c.coverers.every(id=>fl.cards[id].removed)){
+      c.faceUp=true;evs.push({t:'reveal',id:c.id});
+    }
+  }
+}
+function clickCard(run,id){
+  const fl=run.fl;
+  if(run.phase!=='floor'||!fl||fl.over)return[];
+  const c=fl.cards[id];
+  if(!c||c.removed||!c.faceUp||!isExposed(fl,c))return[{t:'nope',id}];
+  if(c.special==='frozen'&&!c.thawed){c.thawed=true;return[{t:'thaw',id}];}
+  if(!(c.special==='hexed'||matches(run,c.rank)))return[{t:'nope',id}];
+  const evs=[];
+  c.removed=true;
+  let pts=0,mult=0;
+  if(c.special==='hexed'){
+    fl.chain=0;
+    evs.push({t:'hexplay',id});
+  }else{
+    fl.chain++;
+    run.stats.bestChain=Math.max(run.stats.bestChain,fl.chain);
+    const cap=fl.boss==='rust'?4:12;
+    mult=Math.min(cap,has(run,'momentum')?1+2*(fl.chain-1):fl.chain);
+    pts=10*mult;
+    if(has(run,'royal')&&c.rank>=11)pts*=2;
+    if(has(run,'seven')&&c.rank===7)pts+=77;
+    if(c.r===0){pts+=50;evs.push({t:'summit',id});}
+  }
+  fl.score+=pts;
+  run.stats.played++;
+  let gold=0;
+  if(c.special==='gilded'){gold=has(run,'lamp')?6:3;run.gold+=gold;run.stats.gold+=gold;}
+  fl.waste.push({rank:c.rank,suit:c.suit});
+  evs.unshift({t:'play',id,pts,mult,gold,chain:fl.chain});
+  doReveals(run,evs);
+  if(fl.cards.every(x=>x.removed))evs.push(...endFloor(run,true,true));
+  return evs;
+}
+function drawStock(run){
+  const fl=run.fl;
+  if(run.phase!=='floor'||!fl||fl.over||fl.stock.length===0)return[];
+  const evs=[];
+  const card=fl.stock.pop();
+  fl.waste.push(card);
+  fl.drew++;
+  evs.push({t:'draw',card});
+  if(fl.chain>0){
+    if(has(run,'net')&&!fl.safetyUsed){fl.safetyUsed=true;evs.push({t:'safety'});}
+    else{fl.chain=0;evs.push({t:'break'});}
+  }
+  if(has(run,'digger')){fl.score+=6;evs.push({t:'digger',pts:6});}
+  if(fl.boss==='tax'&&run.gold>0){run.gold--;evs.push({t:'tax'});}
+  return evs;
+}
+function useItem(run,idx,targetId){
+  const fl=run.fl;
+  if(run.phase!=='floor'||!fl||fl.over)return[];
+  const id=run.items[idx];
+  if(!id)return[];
+  const evs=[];
+  if(id==='hammer'){
+    const c=fl.cards[targetId];
+    if(!c||c.removed||!isExposed(fl,c))return[{t:'nope',id:targetId}];
+    c.removed=true;
+    evs.push({t:'smash',id:c.id});
+    doReveals(run,evs);
+    run.items.splice(idx,1);
+    if(fl.cards.every(x=>x.removed))evs.push(...endFloor(run,true,true));
+    return evs;
+  }
+  if(id==='gale'){
+    const rem=fl.cards.filter(c=>!c.removed);
+    const vals=shuffle(run,rem.map(c=>({rank:c.rank,suit:c.suit})));
+    rem.forEach((c,i)=>{c.rank=vals[i].rank;c.suit=vals[i].suit;});
+    evs.push({t:'gale'});
+  }else if(id==='eye'){
+    for(const c of fl.cards)if(!c.removed&&!c.faceUp){c.faceUp=true;evs.push({t:'reveal',id:c.id});}
+    evs.push({t:'eye'});
+  }else if(id==='flask'){
+    for(let k=0;k<3;k++)fl.stock.push({rank:ri(run,13)+1,suit:ri(run,4)});
+    evs.push({t:'flask'});
+  }
+  run.items.splice(idx,1);
+  return evs;
+}
+function endFloor(run,win,full){
+  const fl=run.fl;
+  fl.over=true;
+  const sum={win,full:!!full,floor:run.floor,target:fl.target,gold:0,clearBonus:0,
+             dead:false,phoenix:false,tent:false,hpLost:0,stockLeft:fl.stock.length};
+  if(win){
+    if(full){
+      sum.clearBonus=200+15*fl.stock.length;
+      fl.score+=sum.clearBonus;
+      run.stats.fullClears++;
+    }
+    sum.score=fl.score;
+    let g=5+run.floor+(full?6:0)+Math.min(5,Math.floor(Math.max(0,fl.score-fl.target)/120));
+    if(has(run,'idol'))g+=4;
+    sum.gold=g;
+    run.gold+=g;run.stats.gold+=g;run.stats.floors++;
+    if(fl.boss&&has(run,'tent')&&run.hp<run.maxHp){run.hp++;sum.tent=true;}
+    if(run.floor===VICTORY_FLOOR){run.phase='victory';}
+    else{run.phase='shop';genShop(run);}
+  }else{
+    sum.score=fl.score;
+    run.hp--;sum.hpLost=1;run.stats.retries++;
+    if(run.hp<=0&&has(run,'phoenix')){
+      run.relics=run.relics.filter(r=>r!=='phoenix');
+      run.hp=1;sum.phoenix=true;
+    }
+    if(run.hp<=0){run.phase='dead';sum.dead=true;}
+    else{run.phase='refloor';}
+  }
+  return[{t:'floorend',sum}];
+}
+function endFloorManual(run){
+  const fl=run.fl;
+  if(!fl||fl.over||run.phase!=='floor')return[];
+  return endFloor(run,fl.score>=fl.target,false);
+}
+function retryFloor(run){if(run.phase==='refloor')startFloor(run);}
+
+// ============ shop ============
+function genShop(run){
+  const owned=new Set(run.relics);
+  const pool=RELICS.filter(r=>!owned.has(r.id));
+  const w=r=>r.rar===0?12:r.rar===1?7:3;
+  const picks=[];
+  const p2=[...pool];
+  for(let k=0;k<3&&p2.length;k++){
+    const tot=p2.reduce((s,r)=>s+w(r),0);
+    let x=rnd(run)*tot,idx=p2.length-1;
+    for(let i=0;i<p2.length;i++){x-=w(p2[i]);if(x<=0){idx=i;break;}}
+    picks.push(p2.splice(idx,1)[0]);
+  }
+  const items=[ITEMS[ri(run,ITEMS.length)],ITEMS[ri(run,ITEMS.length)]];
+  const old=run.shop;
+  run.shop={
+    relics:picks.map(r=>({...r,sold:false})),
+    items:items.map(i=>({...i,sold:false})),
+    reroll:old&&old.keepCosts?old.reroll:2,
+    heal:6,
+  };
+}
+function buyRelic(run,i){
+  const r=run.shop&&run.shop.relics[i];
+  if(!r||r.sold||run.gold<r.cost)return false;
+  run.gold-=r.cost;r.sold=true;run.relics.push(r.id);
+  return true;
+}
+function buyItem(run,i){
+  const it=run.shop&&run.shop.items[i];
+  if(!it||it.sold||run.gold<it.cost||run.items.length>=run.itemCap)return false;
+  run.gold-=it.cost;it.sold=true;run.items.push(it.id);
+  return true;
+}
+function buyHeal(run){
+  if(!run.shop||run.gold<run.shop.heal||run.hp>=run.maxHp)return false;
+  run.gold-=run.shop.heal;run.hp++;
+  return true;
+}
+function rerollShop(run){
+  if(!run.shop||run.gold<run.shop.reroll)return false;
+  run.gold-=run.shop.reroll;
+  const c=run.shop.reroll+1;
+  genShop(run);
+  run.shop.reroll=c;run.shop.keepCosts=true;
+  return true;
+}
+function shopNext(run){run.floor++;startFloor(run);}
+function continueEndless(run){genShop(run);run.phase='shop';}
+
+const Core={newRun,startFloor,clickCard,drawStock,useItem,endFloorManual,retryFloor,
+  genShop,buyRelic,buyItem,buyHeal,rerollShop,shopNext,continueEndless,
+  hasMoves,canPlay,isExposed,matches,wasteTop,has,
+  LAYOUTS,RELICS,ITEMS,BOSSES,VICTORY_FLOOR};
+if(typeof module!=='undefined')module.exports=Core;
+/*CORE-END*/
+</script>
+
+<script>
+'use strict';
+// ============ UI ============
+const $=id=>document.getElementById(id);
+const boardEl=$('board'),holderEl=$('boardHolder'),areaEl=$('boardArea');
+const overlayEl=$('overlay'),plateEl=$('plate');
+const REDUCED=matchMedia('(prefers-reduced-motion:reduce)').matches;
+const CW=94,CH=132,XS=47,YS=72;
+const SUITS=['♠','♥','♦','♣'];
+const RANKS=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+
+let run=null,nodes={},boardScale=1,bw=0,bh=0;
+let targeting=-1;           // item index armed for hammer
+let lastSum=null;
+let prevGold=0,prevHp=0;
+
+// ---------- storage ----------
+const store={
+  get(k,d){try{const v=localStorage.getItem('rp_'+k);return v==null?d:JSON.parse(v);}catch(e){return d;}},
+  set(k,v){try{localStorage.setItem('rp_'+k,JSON.stringify(v));}catch(e){}},
+};
+let muted=store.get('mute',false);
+
+// ---------- audio ----------
+let actx=null;
+function snd(fn){
+  if(muted)return;
+  try{
+    if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state==='suspended')actx.resume();
+    fn();
+  }catch(e){}
+}
+function tone(f,t0,dur,type,g,f2){
+  const o=actx.createOscillator(),ga=actx.createGain(),t=actx.currentTime+t0;
+  o.type=type||'triangle';
+  o.frequency.setValueAtTime(f,t);
+  if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+dur);
+  ga.gain.setValueAtTime(g||0.12,t);
+  ga.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(ga);ga.connect(actx.destination);
+  o.start(t);o.stop(t+dur+0.03);
+}
+const sfx={
+  play:m=>snd(()=>{tone(300+m*38,0,.13,'triangle',.13);if(m>=4)tone((300+m*38)*1.5,.03,.11,'sine',.07);}),
+  draw:()=>snd(()=>tone(150,0,.07,'square',.06)),
+  flip:()=>snd(()=>tone(720,0,.04,'sine',.045)),
+  thaw:()=>snd(()=>{tone(1100,0,.06,'sine',.08);tone(1500,.05,.09,'sine',.06);}),
+  hex:()=>snd(()=>tone(130,0,.28,'sawtooth',.09,70)),
+  nope:()=>snd(()=>tone(160,0,.08,'square',.05)),
+  win:()=>snd(()=>[523,659,784,1047].forEach((f,i)=>tone(f,i*.09,.2,'triangle',.11))),
+  fail:()=>snd(()=>[330,262,196].forEach((f,i)=>tone(f,i*.13,.22,'sawtooth',.07))),
+  coin:()=>snd(()=>{tone(1318,0,.05,'square',.05);tone(1760,.05,.09,'square',.045);}),
+  smash:()=>snd(()=>tone(95,0,.16,'square',.14,55)),
+  gale:()=>snd(()=>tone(380,0,.35,'sawtooth',.04,950)),
+  heart:()=>snd(()=>tone(196,0,.3,'sine',.12,392)),
+};
+
+// ---------- helpers ----------
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function roman(n){
+  const T=[[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];
+  let s='';for(const[v,r]of T)while(n>=v){s+=r;n-=v;}return s;
+}
+function isRed(s){return s===1||s===2;}
+function bossDef(id){return Core.BOSSES.find(b=>b.id===id);}
+function itemDef(id){return Core.ITEMS.find(i=>i.id===id);}
+function relicDef(id){return Core.RELICS.find(r=>r.id===id);}
+function fmt(n){return n.toLocaleString('en-US');}
+
+function faceHTML(c){
+  if(c.rank===0)return `<div class="face front joker"><div class="pip">🃏</div><div class="jlabel">JOKER</div></div>`;
+  const g=SUITS[c.suit],rs=RANKS[c.rank-1],red=isRed(c.suit)?' red':'';
+  return `<div class="face front${red}"><div class="corner">${rs}<span>${g}</span></div><div class="pip">${g}</div><div class="corner flip">${rs}<span>${g}</span></div></div>`;
+}
+function miniHTML(c){
+  if(!c)return'';
+  if(c.joker||c.rank===0)return `<span class="mr">J🃏</span><span class="mp">🃏</span>`;
+  return `<span class="mr">${RANKS[c.rank-1]}${SUITS[c.suit]}</span><span class="mp">${SUITS[c.suit]}</span>`;
+}
+
+// ---------- toasts / floats ----------
+function toast(msg,ms){
+  const t=document.createElement('div');
+  t.className='toast';t.innerHTML=msg;
+  $('toasts').appendChild(t);
+  setTimeout(()=>t.classList.add('fade'),(ms||2600)-500);
+  setTimeout(()=>t.remove(),ms||2600);
+}
+function spawnFloat(cardId,text,cls,delay){
+  const c=run.fl.cards[cardId];
+  if(!c)return;
+  const f=document.createElement('div');
+  f.className='float'+(cls?' '+cls:'');
+  f.textContent=text;
+  f.style.left=(c.x*XS+CW/2)+'px';
+  f.style.top=(c.r*YS+14)+'px';
+  f.style.transform='translateX(-50%)';
+  setTimeout(()=>{boardEl.appendChild(f);setTimeout(()=>f.remove(),1000);},delay||0);
+}
+
+// ---------- board rendering ----------
+function buildBoard(){
+  const fl=run.fl;
+  boardEl.innerHTML='';nodes={};
+  const maxX=Math.max(...fl.cards.map(c=>c.x));
+  const maxR=Math.max(...fl.cards.map(c=>c.r));
+  bw=(maxX+2)*XS;bh=maxR*YS+CH;
+  boardEl.style.width=bw+'px';boardEl.style.height=bh+'px';
+  for(const c of fl.cards){
+    const el=document.createElement('button');
+    el.className='card';
+    el.style.left=(c.x*XS)+'px';
+    el.style.top=(c.r*YS)+'px';
+    el.style.zIndex=10+c.r;
+    el.setAttribute('aria-label','card');
+    el.innerHTML=`<div class="inner"><div class="face back"></div>${faceHTML(c)}</div>`;
+    el.addEventListener('click',()=>onCardClick(c.id));
+    boardEl.appendChild(el);
+    nodes[c.id]=el;
+  }
+  fitBoard();syncBoard();
+}
+function fitBoard(){
+  if(!run||!run.fl)return;
+  const aw=areaEl.clientWidth-24,ah=areaEl.clientHeight-70;
+  boardScale=Math.max(.3,Math.min(aw/bw,ah/bh,1.12));
+  boardEl.style.transform=`scale(${boardScale})`;
+  holderEl.style.width=(bw*boardScale)+'px';
+  holderEl.style.height=(bh*boardScale)+'px';
+}
+function rebuildFaces(){
+  for(const c of run.fl.cards){
+    if(c.removed)continue;
+    const el=nodes[c.id];
+    if(!el)continue;
+    el.innerHTML=`<div class="inner"><div class="face back"></div>${faceHTML(c)}</div>`;
+  }
+}
+function syncBoard(){
+  const fl=run.fl;
+  if(!fl)return;
+  for(const c of fl.cards){
+    const el=nodes[c.id];
+    if(!el)continue;
+    if(c.removed&&!el.classList.contains('gone')&&!el.dataset.anim)el.classList.add('gone');
+    el.classList.toggle('faceup',c.faceUp);
+    el.classList.toggle('gilded',c.special==='gilded');
+    el.classList.toggle('hexed',c.special==='hexed');
+    el.classList.toggle('frozen',c.special==='frozen');
+    el.classList.toggle('thawed',c.thawed);
+    const exposed=!c.removed&&Core.isExposed(fl,c);
+    el.classList.toggle('covered',c.faceUp&&!exposed);
+    const play=!fl.over&&targeting<0&&Core.canPlay(run,c);
+    el.classList.toggle('playable',play);
+    el.classList.toggle('frosty',play&&c.special==='frozen'&&!c.thawed);
+    el.classList.toggle('cansmash',targeting>=0&&exposed&&!c.removed);
+    el.disabled=c.removed;
+  }
+}
+let wasteRendered=-1;
+function syncWaste(pop){
+  if(!run||!run.fl)return;
+  const top=Core.wasteTop(run.fl);
+  const w=$('waste');
+  w.innerHTML=miniHTML(top);
+  w.className='minicard'+((top.joker||top.rank===0)?' jok':(isRed(top.suit)?' red':''))+(pop?' pop':'');
+  if(pop)setTimeout(()=>w.classList.remove('pop'),260);
+}
+function flyToWaste(el){
+  if(REDUCED||!el){if(el)el.classList.add('gone');return;}
+  const wr=$('waste').getBoundingClientRect();
+  const cr=el.getBoundingClientRect();
+  const clone=el.cloneNode(true);
+  clone.classList.remove('playable','frosty','cansmash');
+  clone.classList.add('flying');
+  clone.style.left=el.style.left;clone.style.top=el.style.top;clone.style.zIndex=300;
+  boardEl.appendChild(clone);
+  el.classList.add('gone');
+  const dx=(wr.left+wr.width/2-(cr.left+cr.width/2))/boardScale;
+  const dy=(wr.top+wr.height/2-(cr.top+cr.height/2))/boardScale;
+  const rot=(Math.random()*24-12).toFixed(1);
+  requestAnimationFrame(()=>{
+    clone.style.transform=`translate(${dx}px,${dy}px) scale(${wr.width/cr.width}) rotate(${rot}deg)`;
+    clone.style.opacity='.9';
+  });
+  setTimeout(()=>clone.remove(),390);
+}
+
+// ---------- HUD ----------
+function hudSync(){
+  if(!run)return;
+  const fl=run.fl;
+  // hearts
+  let h='';
+  for(let i=0;i<run.maxHp;i++)h+=`<span class="${i<run.hp?'on':'off'}">♥</span>`;
+  $('hearts').innerHTML=h;
+  if(run.hp!==prevHp){prevHp=run.hp;}
+  // gold
+  const g=$('goldLbl');
+  g.textContent=run.gold+' ⛃';
+  if(run.gold!==prevGold){g.classList.add('bump');setTimeout(()=>g.classList.remove('bump'),200);prevGold=run.gold;}
+  // floor
+  const boss=fl&&fl.boss?bossDef(fl.boss):null;
+  $('floorLbl').innerHTML=fl?`Floor <b>${roman(run.floor)}</b>${boss?` · <span style="color:#f0949e">${esc(boss.name)}</span>`:''}`:'';
+  // relics
+  const rb=$('relicbar');
+  rb.innerHTML=run.relics.map(id=>{
+    const r=relicDef(id);
+    return `<button class="relic" data-a="relicinfo" data-id="${r.id}" title="${esc(r.name)} — ${esc(r.desc)}"><span>${r.icon}</span><span class="rname">${esc(r.name)}</span></button>`;
+  }).join('')+(boss?`<span class="bosschip" title="${esc(boss.desc)}">☠ ${esc(boss.name)}: ${esc(boss.desc)}</span>`:'');
+  if(!fl)return;
+  // stock/waste
+  $('stockCt').textContent=fl.stock.length+' left';
+  $('stockBtn').classList.toggle('empty',fl.stock.length===0);
+  if(fl.waste.length!==wasteRendered){
+    const fresh=wasteRendered<0||fl.waste.length<wasteRendered;
+    syncWaste(!fresh);
+    wasteRendered=fl.waste.length;
+  }
+  // chain
+  const cap=fl.boss==='rust'?4:12;
+  const next=Math.min(cap,Core.has(run,'momentum')?1+2*fl.chain:fl.chain+1);
+  $('chainMult').textContent='×'+next;
+  const ch=$('chain');
+  ch.classList.toggle('warm',next>=3&&next<6);
+  ch.classList.toggle('hot',next>=6&&next<9);
+  ch.classList.toggle('inferno',next>=9);
+  // meter
+  const pct=Math.min(100,100*fl.score/fl.target);
+  $('meterFill').style.width=pct+'%';
+  $('meter').classList.toggle('done',fl.score>=fl.target);
+  $('meterTxt').textContent=`${fmt(fl.score)} / ${fmt(fl.target)}`;
+  $('meterDone').innerHTML=fl.score>=fl.target?'<span class="done">✦ target met</span>':'';
+  // items
+  const slots=[];
+  for(let i=0;i<run.itemCap;i++){
+    const id=run.items[i];
+    if(id){
+      const d=itemDef(id);
+      slots.push(`<button class="itemslot full${targeting===i?' armed':''}" data-a="useitem" data-i="${i}" title="${esc(d.name)} — ${esc(d.desc)}">${d.icon}</button>`);
+    }else slots.push(`<div class="itemslot"></div>`);
+  }
+  $('items').innerHTML=slots.join('');
+  // finish / banner
+  const moves=Core.hasMoves(run);
+  const active=run.phase==='floor'&&!fl.over;
+  $('finishBtn').classList.toggle('hidden',!(active&&moves&&fl.score>=fl.target));
+  const showBanner=active&&!moves;
+  $('banner').classList.toggle('hidden',!showBanner);
+  if(showBanner){
+    const won=fl.score>=fl.target;
+    $('bannerMsg').textContent=won?'No moves remain — but the target is met.':'No moves remain.';
+    $('bannerBtn').textContent=won?'Claim Victory ✦':'Accept Defeat';
+  }
+  // targeting hint
+  $('hint').classList.toggle('hidden',targeting<0);
+  if(targeting>=0)$('hint').textContent='🔨 Choose an open card to smash — Esc to cancel';
+}
+
+// ---------- event application ----------
+function applyEvents(evs){
+  for(const ev of evs){
+    switch(ev.t){
+      case 'play':{
+        flyToWaste(nodes[ev.id]);
+        if(ev.pts>0)spawnFloat(ev.id,'+'+fmt(ev.pts),ev.mult>=6?'hot':'');
+        if(ev.gold>0)spawnFloat(ev.id,'+'+ev.gold+' ⛃','gold',260);
+        sfx.play(ev.mult||1);
+        break;
+      }
+      case 'hexplay':spawnFloat(ev.id,'HEXED','hex');sfx.hex();break;
+      case 'summit':spawnFloat(ev.id,'SUMMIT','gold',180);break;
+      case 'thaw':{
+        spawnFloat(ev.id,'thawed ❄','icy');sfx.thaw();
+        break;
+      }
+      case 'reveal':sfx.flip();break;
+      case 'draw':sfx.draw();break;
+      case 'break':{
+        const ch=$('chain');
+        ch.classList.add('snap');setTimeout(()=>ch.classList.remove('snap'),380);
+        break;
+      }
+      case 'safety':toast('🕸️ Safety Net holds your chain');break;
+      case 'digger':toast('⚰️ Grave Digger: +6 score',1400);break;
+      case 'tax':toast('☠ The Taxman takes 1 gold',1400);break;
+      case 'smash':{
+        const el=nodes[ev.id];
+        if(el){el.dataset.anim='1';el.classList.add('smashed');setTimeout(()=>{el.classList.add('gone');delete el.dataset.anim;},310);}
+        sfx.smash();
+        break;
+      }
+      case 'gale':rebuildFaces();sfx.gale();toast('🌪️ The winds reshuffle the board');break;
+      case 'eye':toast('👁️ All is revealed');sfx.thaw();break;
+      case 'flask':toast('⚗️ +3 cards on the stock');sfx.coin();break;
+      case 'nope':{
+        const el=nodes[ev.id];
+        if(el){el.classList.add('shake');setTimeout(()=>el.classList.remove('shake'),320);}
+        sfx.nope();
+        break;
+      }
+      case 'floorend':{
+        lastSum=ev.sum;
+        setTimeout(()=>onFloorEnd(ev.sum),ev.sum.full?900:650);
+        break;
+      }
+    }
+  }
+  hudSync();syncBoard();
+}
+
+function onCardClick(id){
+  if(!run||run.phase!=='floor')return;
+  if(targeting>=0){
+    const evs=Core.useItem(run,targeting,id);
+    targeting=-1;
+    applyEvents(evs);
+    return;
+  }
+  const evs=Core.clickCard(run,id);
+  applyEvents(evs);
+}
+function onFloorEnd(sum){
+  if(sum.win){
+    sfx.win();
+    if(run.phase==='victory')showVictory(sum);
+    else showShop(sum);
+  }else{
+    sfx.fail();
+    if(sum.dead)showDead(sum);
+    else showDefeat(sum);
+  }
+}
+
+// ---------- screens ----------
+function showScreen(html){
+  plateEl.innerHTML=html;
+  overlayEl.classList.remove('hidden');
+}
+function hideScreen(){overlayEl.classList.add('hidden');}
+
+function seedLine(){
+  return `<div class="seedline">seed <button data-a="copyseed" title="Copy seed">${esc(run.seedStr)}</button></div>`;
+}
+function showTitle(){
+  const best=store.get('best',0);
+  showScreen(`
+    <div class="titleart">🃏⛰🃏</div>
+    <h1 class="gilt">Rogue Peaks</h1>
+    <p class="tagline">a roguelike solitaire — climb the spire one chain at a time</p>
+    <div class="rules">
+      <p><span class="k">Play</span> cards one rank above or below the waste card. Unbroken chains multiply your score — ×1, ×2, ×3…</p>
+      <p><span class="k">Draw</span> from the stock when stuck; it resets your chain. Reach the floor's target before the moves run out, or lose a heart.</p>
+      <p><span class="k">Climb</span> all ${Core.VICTORY_FLOOR} floors. Spend gold on relics between floors. Bosses lurk on every third floor.</p>
+    </div>
+    ${best?`<div class="best">— your banner flies on floor ${best} —</div>`:''}
+    <div class="seedrow">
+      <input id="seedIn" placeholder="seed (optional)" maxlength="40" autocomplete="off">
+    </div>
+    <div class="bigbtnrow">
+      <button class="btn gold" data-a="begin">Begin the Climb</button>
+      <button class="btn" data-a="help">How to Play</button>
+    </div>
+  `);
+}
+function showIntro(){
+  const fl=run.fl;
+  const boss=fl.boss?bossDef(fl.boss):null;
+  showScreen(`
+    <p class="sub" style="margin-bottom:2px">${esc(fl.layoutName)}</p>
+    <h1>Floor ${roman(run.floor)}</h1>
+    ${boss?`<div class="bossplate"><div class="bname">☠ ${esc(boss.name)}</div><div class="bdesc">${esc(boss.desc)}</div></div>`:''}
+    <div class="targetline">Target · <b>${fmt(fl.target)}</b></div>
+    <p class="sub" style="margin-top:8px">${fl.stockStart} cards in the stock · ${fl.cards.length} on the board</p>
+    <div class="bigbtnrow"><button class="btn gold" data-a="deal">Deal the Cards</button></div>
+    ${seedLine()}
+  `);
+}
+function rewardHTML(sum){
+  if(!sum||!sum.win)return'';
+  return `<p class="reward">Score <b>${fmt(sum.score)}</b> / ${fmt(sum.target)}
+    ${sum.full?` · <b>FULL CLEAR +${fmt(sum.clearBonus)}</b>`:''}
+    · reward <b>+${sum.gold} ⛃</b>${sum.tent?' · ⛺ +1 ♥':''}</p>`;
+}
+function showShop(sum){
+  const s=run.shop;
+  const relicCards=s.relics.map((r,i)=>`
+    <div class="shopcard${r.sold?' sold':''}">
+      <div class="icon">${r.icon}</div>
+      <div class="name">${esc(r.name)}</div>
+      <div class="rar${r.rar===1?' u':r.rar===2?' r':''}">${['common','uncommon','rare'][r.rar]}</div>
+      <div class="desc">${esc(r.desc)}</div>
+      <button class="btn small" data-a="buyrelic" data-i="${i}" ${r.sold||run.gold<r.cost?'disabled':''}>${r.sold?'Sold':r.cost+' ⛃'}</button>
+    </div>`).join('');
+  const itemCards=s.items.map((it,i)=>`
+    <div class="shopcard${it.sold?' sold':''}">
+      <div class="icon">${it.icon}</div>
+      <div class="name">${esc(it.name)}</div>
+      <div class="rar">item</div>
+      <div class="desc">${esc(it.desc)}</div>
+      <button class="btn small" data-a="buyitem" data-i="${i}" ${it.sold||run.gold<it.cost||run.items.length>=run.itemCap?'disabled':''}>${it.sold?'Sold':it.cost+' ⛃'}</button>
+    </div>`).join('');
+  showScreen(`
+    <div class="shophead">
+      <h1 style="font-size:26px;text-align:left;margin:0">The Landing</h1>
+      <div class="shopgold">${run.gold} ⛃</div>
+    </div>
+    <p class="sub" style="text-align:left;margin-top:2px">Floor ${roman(run.floor)} cleared. Catch your breath, spend your gold.</p>
+    ${rewardHTML(sum)}
+    <div class="rule"></div>
+    <div class="shopgrid">${relicCards}</div>
+    <h2>Supplies</h2>
+    <div class="shopgrid">${itemCards}</div>
+    <div class="shoprow">
+      <button class="btn small" data-a="heal" ${run.gold<s.heal||run.hp>=run.maxHp?'disabled':''}>Mend a Heart · ${s.heal} ⛃</button>
+      <button class="btn small" data-a="reroll" ${run.gold<s.reroll?'disabled':''}>Reroll Wares · ${s.reroll} ⛃</button>
+    </div>
+    <div class="bigbtnrow"><button class="btn gold" data-a="shopnext">Climb to Floor ${roman(run.floor+1)} →</button></div>
+  `);
+}
+function showDefeat(sum){
+  showScreen(`
+    <h1 style="color:#f0949e">The Spire Rejects You</h1>
+    <p class="sub">Floor ${roman(sum.floor)} · ${fmt(sum.score)} of ${fmt(sum.target)} — the moves ran out.</p>
+    <div class="center" style="font-size:30px;margin:10px 0">💔</div>
+    ${sum.phoenix?`<p class="center" style="color:var(--gilt2)">🪶 The Phoenix Feather burns to ash — you live.</p>`:''}
+    <p class="sub">${run.hp} heart${run.hp===1?'':'s'} remain${run.hp===1?'s':''}. The floor reshuffles itself.</p>
+    <div class="bigbtnrow"><button class="btn gold" data-a="retry">Climb Again</button></div>
+  `);
+}
+function showDead(sum){
+  const best=Math.max(store.get('best',0),run.floor);
+  store.set('best',best);
+  const st=run.stats;
+  showScreen(`
+    <h1 style="color:#f0949e">Death on Floor ${roman(run.floor)}</h1>
+    <p class="tagline">the cards remember your climb</p>
+    <div style="max-width:340px;margin:0 auto">
+      <div class="kv"><span>Floors cleared</span><span>${st.floors}</span></div>
+      <div class="kv"><span>Best chain</span><span>×${st.bestChain}</span></div>
+      <div class="kv"><span>Cards played</span><span>${st.played}</span></div>
+      <div class="kv"><span>Gold gathered</span><span>${st.gold} ⛃</span></div>
+      <div class="kv"><span>Full clears</span><span>${st.fullClears}</span></div>
+      <div class="kv"><span>Best ascent ever</span><span>floor ${best}</span></div>
+    </div>
+    ${seedLine()}
+    <div class="bigbtnrow"><button class="btn gold" data-a="newrun">Climb Anew</button></div>
+  `);
+}
+function showVictory(sum){
+  const best=Math.max(store.get('best',0),run.floor);
+  store.set('best',best);
+  const st=run.stats;
+  showScreen(`
+    <div class="titleart">✦ ✦ ✦</div>
+    <h1 class="gilt">The Spire Is Cleared</h1>
+    <p class="tagline">twelve floors, and the deck bows to you</p>
+    ${rewardHTML(sum)}
+    <div style="max-width:340px;margin:0 auto">
+      <div class="kv"><span>Best chain</span><span>×${st.bestChain}</span></div>
+      <div class="kv"><span>Cards played</span><span>${st.played}</span></div>
+      <div class="kv"><span>Gold gathered</span><span>${st.gold} ⛃</span></div>
+      <div class="kv"><span>Hearts remaining</span><span>${run.hp} ♥</span></div>
+    </div>
+    ${seedLine()}
+    <div class="bigbtnrow">
+      <button class="btn gold" data-a="endless">Keep Climbing — Endless</button>
+      <button class="btn" data-a="newrun">Retire</button>
+    </div>
+  `);
+}
+function showHelp(){
+  showScreen(`
+    <h1 style="font-size:26px">How to Play</h1>
+    <div class="rules">
+      <p><span class="k">The board.</span> Click any open card (nothing overlapping it) that is <b>one rank above or below</b> the waste card. A goes to 2; K stops at Q — unless a relic says otherwise.</p>
+      <p><span class="k">Chains.</span> Every consecutive play raises the multiplier: 10, 20, 30… Drawing from the stock (click it, or press <b>Space</b>) resets the chain to ×1.</p>
+      <p><span class="k">The floor.</span> Reach the target score before your moves run out — win and earn gold. Fall short and lose a heart; at zero hearts the run ends. Clear <b>every</b> card for a big bonus. Summit cards (top row) pay +50.</p>
+      <p><span class="k">The climb.</span> Between floors, buy relics (permanent powers) and items (one use, click to use them from the tray). A boss twists the rules on every third floor. Floor ${Core.VICTORY_FLOOR} is the summit — after that, the climb is endless.</p>
+    </div>
+    <h2>Marked Cards</h2>
+    <div class="legend">
+      <div class="li"><span class="sw g">◆ Gilded</span><span>pays gold when played.</span></div>
+      <div class="li"><span class="sw f">❄ Frozen</span><span>click once to thaw, again to play.</span></div>
+      <div class="li"><span class="sw h">✦ Hexed</span><span>plays onto <i>anything</i>, but scores nothing and breaks your chain.</span></div>
+      <div class="li"><span class="sw j">🃏 Joker</span><span>drawn from the stock; any card may be played on it.</span></div>
+    </div>
+    <div class="bigbtnrow"><button class="btn gold" data-a="closehelp">Back</button></div>
+  `);
+}
+
+// ---------- flow ----------
+function beginRun(seedStr){
+  run=Core.newRun(seedStr);
+  prevGold=run.gold;prevHp=run.hp;
+  targeting=-1;
+  Core.startFloor(run);
+  hudSync();
+  showIntro();
+}
+function deal(){
+  hideScreen();
+  wasteRendered=-1;
+  buildBoard();
+  hudSync();
+  window.RP={run,Core};
+}
+
+// ---------- global actions ----------
+document.addEventListener('click',e=>{
+  const a=e.target.closest('[data-a]');
+  if(!a)return;
+  const act=a.dataset.a,i=+a.dataset.i;
+  switch(act){
+    case 'begin':beginRun(document.getElementById('seedIn')?.value);break;
+    case 'deal':deal();break;
+    case 'retry':Core.retryFloor(run);hudSync();showIntro();break;
+    case 'newrun':showTitle();break;
+    case 'shopnext':Core.shopNext(run);hudSync();showIntro();break;
+    case 'endless':Core.continueEndless(run);showShop(null);break;
+    case 'buyrelic':if(Core.buyRelic(run,i)){sfx.coin();toast('Relic claimed');}else sfx.nope();hudSync();showShop(lastSum);break;
+    case 'buyitem':if(Core.buyItem(run,i)){sfx.coin();}else sfx.nope();hudSync();showShop(lastSum);break;
+    case 'heal':if(Core.buyHeal(run)){sfx.heart();toast('♥ mended');}else sfx.nope();hudSync();showShop(lastSum);break;
+    case 'reroll':if(Core.rerollShop(run)){sfx.coin();}else sfx.nope();hudSync();showShop(lastSum);break;
+    case 'endfloor':applyEvents(Core.endFloorManual(run));break;
+    case 'help':showHelp();break;
+    case 'closehelp':
+      if(!run){showTitle();}
+      else if(run.phase==='floor'&&run.fl&&!run.fl.over){hideScreen();}
+      else if(run.phase==='shop'){showShop(lastSum);}
+      else if(run.phase==='refloor'){showDefeat(lastSum);}
+      else if(run.phase==='dead'){showDead(lastSum);}
+      else if(run.phase==='victory'){showVictory(lastSum);}
+      else{showTitle();}
+      break;
+    case 'useitem':{
+      if(!run||run.phase!=='floor'||run.fl.over)break;
+      const id=run.items[i];
+      if(!id)break;
+      if(id==='hammer'){
+        targeting=targeting===i?-1:i;
+        hudSync();syncBoard();
+      }else{
+        applyEvents(Core.useItem(run,i));
+      }
+      break;
+    }
+    case 'relicinfo':{
+      const r=relicDef(a.dataset.id);
+      if(r)toast(`${r.icon} <b>${esc(r.name)}</b> — ${esc(r.desc)}`,3200);
+      break;
+    }
+    case 'copyseed':
+      try{navigator.clipboard.writeText(run.seedStr);toast('Seed copied');}catch(err){toast('Seed: '+esc(run.seedStr));}
+      break;
+  }
+});
+$('stockBtn').addEventListener('click',()=>{
+  if(!run||run.phase!=='floor'||overlayEl.classList.contains('hidden')===false)return;
+  applyEvents(Core.drawStock(run));
+});
+$('muteBtn').addEventListener('click',()=>{
+  muted=!muted;store.set('mute',muted);
+  $('muteBtn').style.opacity=muted?.4:1;
+  $('muteBtn').title=muted?'Sound off':'Sound on';
+});
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'&&run&&run.phase==='floor'&&overlayEl.classList.contains('hidden')){
+    e.preventDefault();
+    applyEvents(Core.drawStock(run));
+  }
+  if(e.key==='Escape'&&targeting>=0){targeting=-1;hudSync();syncBoard();}
+});
+window.addEventListener('resize',fitBoard);
+
+// boot
+$('muteBtn').style.opacity=muted?.5:1;
+showTitle();
+</script>
